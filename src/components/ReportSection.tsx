@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Download, Mail, FileText, CheckCircle2, Loader2 } from "lucide-react";
+import { Download, Mail, FileText, CheckCircle2, Loader2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -13,9 +13,10 @@ const EMAILJS_PUBLIC_KEY = "Qk1xZVDwMNEmG_K4Y";
 interface ReportSectionProps {
   pdfUrl: string | null;
   pdfBlob: Blob | null;
+  pdfDownloadUrl: string | null;
 }
 
-const ReportSection = ({ pdfUrl, pdfBlob }: ReportSectionProps) => {
+const ReportSection = ({ pdfUrl, pdfBlob, pdfDownloadUrl }: ReportSectionProps) => {
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -52,6 +53,11 @@ const ReportSection = ({ pdfUrl, pdfBlob }: ReportSectionProps) => {
       return;
     }
 
+    if (!pdfDownloadUrl) {
+      toast.error("Download link not ready yet.");
+      return;
+    }
+
     setSending(true);
     try {
       await emailjs.send(
@@ -59,7 +65,7 @@ const ReportSection = ({ pdfUrl, pdfBlob }: ReportSectionProps) => {
         EMAILJS_TEMPLATE_ID,
         {
           to_email: email,
-          pdf_link: pdfUrl ?? "",
+          pdf_link: pdfDownloadUrl,
         },
         EMAILJS_PUBLIC_KEY
       );
@@ -145,7 +151,7 @@ const ReportSection = ({ pdfUrl, pdfBlob }: ReportSectionProps) => {
               Email Report
             </h3>
             <p className="text-muted-foreground text-sm font-body mb-5">
-              We'll send the PDF report directly to your email address.
+              We'll send a download link directly to your email address.
             </p>
             <form onSubmit={handleEmailSubmit} className="w-full space-y-3">
               <Input
@@ -159,7 +165,7 @@ const ReportSection = ({ pdfUrl, pdfBlob }: ReportSectionProps) => {
               <Button
                 type="submit"
                 variant="outline"
-                disabled={!email.trim() || sending || sent}
+                disabled={!email.trim() || sending || sent || !pdfDownloadUrl}
                 className="w-full font-display border-primary/30 hover:bg-primary/5 text-foreground"
               >
                 {sending ? (
@@ -174,6 +180,21 @@ const ReportSection = ({ pdfUrl, pdfBlob }: ReportSectionProps) => {
             </form>
           </motion.div>
         </div>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6 }}
+          className="text-center mt-10"
+        >
+          <button
+            onClick={() => window.location.reload()}
+            className="flex items-center gap-2 mx-auto text-muted-foreground hover:text-foreground transition-colors font-body text-sm"
+          >
+            <RotateCcw className="w-4 h-4" />
+            Analyse another video
+          </button>
+        </motion.div>
       </div>
     </section>
   );
