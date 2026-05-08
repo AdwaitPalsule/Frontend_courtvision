@@ -2,13 +2,16 @@ import { useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Upload, Film, X, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Sport } from "@/api";
 
 interface VideoUploadProps {
   onVideoSubmit: (file: File) => void;
   isAnalyzing: boolean;
+  sport: Sport;
+  onSportChange: (sport: Sport) => void;
 }
 
-const VideoUpload = ({ onVideoSubmit, isAnalyzing }: VideoUploadProps) => {
+const VideoUpload = ({ onVideoSubmit, isAnalyzing, sport, onSportChange }: VideoUploadProps) => {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -28,37 +31,25 @@ const VideoUpload = ({ onVideoSubmit, isAnalyzing }: VideoUploadProps) => {
   };
 
   const handleFile = useCallback((file: File) => {
-    if (validateFile(file)) {
-      setSelectedFile(file);
-    }
+    if (validateFile(file)) setSelectedFile(file);
   }, []);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
+    if (e.type === "dragenter" || e.type === "dragover") setDragActive(true);
+    else if (e.type === "dragleave") setDragActive(false);
   }, []);
 
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setDragActive(false);
-      if (e.dataTransfer.files?.[0]) {
-        handleFile(e.dataTransfer.files[0]);
-      }
-    },
-    [handleFile]
-  );
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files?.[0]) handleFile(e.dataTransfer.files[0]);
+  }, [handleFile]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) {
-      handleFile(e.target.files[0]);
-    }
+    if (e.target.files?.[0]) handleFile(e.target.files[0]);
   };
 
   const removeFile = () => {
@@ -86,9 +77,25 @@ const VideoUpload = ({ onVideoSubmit, isAnalyzing }: VideoUploadProps) => {
             Upload Your Match Video
           </h2>
           <p className="text-muted-foreground font-body max-w-lg mx-auto">
-            Drop a full-court .mp4 video with 2 players visible. Our AI will
-            handle the rest.
+            Drop a full-court .mp4 video with 2 players visible. Our AI will handle the rest.
           </p>
+
+          {/* Sport Toggle */}
+          <div className="mt-6 inline-flex rounded-xl border border-border p-1 bg-muted gap-1">
+            {(["tennis", "badminton"] as Sport[]).map((s) => (
+              <button
+                key={s}
+                onClick={() => onSportChange(s)}
+                className={`px-5 py-2 rounded-lg text-sm font-display font-semibold capitalize transition-all duration-200 ${
+                  sport === s
+                    ? "bg-primary text-primary-foreground shadow"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {s === "tennis" ? "🎾 Tennis" : "🏸 Badminton"}
+              </button>
+            ))}
+          </div>
         </motion.div>
 
         <motion.div
@@ -130,7 +137,7 @@ const VideoUpload = ({ onVideoSubmit, isAnalyzing }: VideoUploadProps) => {
                   </div>
                   <div>
                     <p className="font-display font-semibold text-foreground text-lg">
-                      Drag & drop your match video
+                      Drag & drop your {sport} match video
                     </p>
                     <p className="text-muted-foreground text-sm mt-1 font-body">
                       or click to browse · .mp4 only · max 500MB
@@ -159,10 +166,7 @@ const VideoUpload = ({ onVideoSubmit, isAnalyzing }: VideoUploadProps) => {
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-5 h-5 text-primary" />
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeFile();
-                      }}
+                      onClick={(e) => { e.stopPropagation(); removeFile(); }}
                       className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
                     >
                       <X className="w-4 h-4" />
@@ -206,7 +210,7 @@ const VideoUpload = ({ onVideoSubmit, isAnalyzing }: VideoUploadProps) => {
                   Analyzing...
                 </span>
               ) : (
-                "Start Analysis"
+                `Analyze ${sport === "tennis" ? "Tennis" : "Badminton"} Match`
               )}
             </Button>
           </motion.div>

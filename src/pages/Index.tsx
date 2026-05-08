@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef } from "react";
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
@@ -6,7 +5,12 @@ import FeaturesSection from "@/components/FeaturesSection";
 import VideoUpload from "@/components/VideoUpload";
 import AnalysisProgress from "@/components/AnalysisProgress";
 import ReportSection from "@/components/ReportSection";
+import { Sport } from "@/api";
 
+const TENNIS_API    = import.meta.env.VITE_API_BASE_TENNIS;
+const BADMINTON_API = import.meta.env.VITE_API_BASE_BADMINTON;
+console.log("Tennis API:", TENNIS_API);
+console.log("Badminton API:", BADMINTON_API);
 const stages = [
   "Extracting frames...",
   "Detecting players...",
@@ -16,18 +20,17 @@ const stages = [
   "Generating report...",
 ];
 
-const API_BASE = import.meta.env.VITE_API_BASE;
-
 type AppState = "idle" | "analyzing" | "done" | "error";
 
 const Index = () => {
-  const [appState, setAppState] = useState<AppState>("idle");
-  const [progress, setProgress] = useState(0);
-  const [stage, setStage] = useState(stages[0]);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
+  const [appState, setAppState]           = useState<AppState>("idle");
+  const [sport, setSport]                 = useState<Sport>("tennis");   // ← new
+  const [progress, setProgress]           = useState(0);
+  const [stage, setStage]                 = useState(stages[0]);
+  const [pdfUrl, setPdfUrl]               = useState<string | null>(null);
+  const [pdfBlob, setPdfBlob]             = useState<Blob | null>(null);
   const [pdfDownloadUrl, setPdfDownloadUrl] = useState<string | null>(null);
-  const [errorMsg, setErrorMsg] = useState("");
+  const [errorMsg, setErrorMsg]           = useState("");
   const progressInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const startProgressSimulation = () => {
@@ -53,6 +56,8 @@ const Index = () => {
   };
 
   const handleVideoSubmit = useCallback(async (file: File) => {
+    const API_BASE = sport === "tennis" ? TENNIS_API : BADMINTON_API;  // ← new
+
     setAppState("analyzing");
     setProgress(0);
     setStage(stages[0]);
@@ -63,17 +68,12 @@ const Index = () => {
     startProgressSimulation();
 
     try {
-      // Step 1 — upload video, get job ID
       const formData = new FormData();
       formData.append("video", file);
-      const res = await fetch(`${API_BASE}/analyze`, {
-        method: "POST",
-        body: formData,
-      });
+      const res = await fetch(`${API_BASE}/analyze`, { method: "POST", body: formData });
       if (!res.ok) throw new Error("Upload failed");
       const { job_id } = await res.json();
 
-      // Step 2 — poll every 15 seconds
       while (true) {
         await new Promise(r => setTimeout(r, 15000));
         const poll = await fetch(`${API_BASE}/status/${job_id}`);
@@ -81,7 +81,6 @@ const Index = () => {
 
         if (contentType.includes("application/pdf")) {
           stopProgress();
-          // Grab the real shareable URL from the header
           const downloadUrl = poll.headers.get("X-Download-Url");
           const blob = await poll.blob();
           const blobUrl = URL.createObjectURL(blob);
@@ -95,17 +94,14 @@ const Index = () => {
         }
 
         const data = await poll.json();
-        if (data.status === "error") {
-          throw new Error(data.message || "Analysis failed");
-        }
-        // status === "processing" — keep polling
+        if (data.status === "error") throw new Error(data.message || "Analysis failed");
       }
     } catch (err: any) {
       stopProgress();
       setErrorMsg(err.message);
       setAppState("error");
     }
-  }, []);
+  }, [sport]);  // ← sport in dependency array
 
   return (
     <div className="min-h-screen bg-background">
@@ -114,7 +110,12 @@ const Index = () => {
       <FeaturesSection />
 
       {appState === "idle" && (
-        <VideoUpload onVideoSubmit={handleVideoSubmit} isAnalyzing={false} />
+        <VideoUpload
+          onVideoSubmit={handleVideoSubmit}
+          isAnalyzing={false}
+          sport={sport}
+          onSportChange={setSport}
+        />
       )}
       {appState === "analyzing" && (
         <AnalysisProgress progress={progress} stage={stage} />
